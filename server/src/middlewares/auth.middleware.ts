@@ -1,46 +1,20 @@
-import type { Request } from "express";
-import mongoose from "mongoose";
-import { ApiError } from "../libs/apiError.js";
-import { asyncHandler } from "../libs/asyncHandler.js";
-import { verifyAccessToken } from "../libs/jwt.js";
+import type { NextFunction, Request, Response } from "express";
+import { unauthorized } from "../libs/apiError.js";
 import { User } from "../models/user.model.js";
+import { verifyAccessToken } from "../utils/tokens.js";
 
-export const requireAuth = asyncHandler(async (req, _res, next) => {
-  const header = req.headers.authorization;
-
-  if (!header?.startsWith("Bearer ")) {
-    throw new ApiError(401, "Authentication required");
-  }
-
-  const token = header.slice("Bearer ".length).trim();
-  if (!token) {
-    throw new ApiError(401, "Authentication required");
-  }
-
-  let userId: string;
+export const requireUser = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    userId = verifyAccessToken(token).userId;
-  } catch {
-    throw new ApiError(401, "Invalid or expired token");
+    const header = req.header("authorization");
+    if (!header?.startsWith("Bearer ")) throw unauthorized();
+    const claims = verifyAccessToken(header.slice(7));
+    const user = await User.findById(claims.sub).select("name email");
+    if (!user) throw unauthorized("Account no longer exists");
+    req.userId = user._id.toString();
+    req.userEmail = user.email;
+    req.userName = user.name;
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  if (!mongoose.isValidObjectId(userId)) {
-    throw new ApiError(401, "Invalid or expired token");
-  }
-
-  const user = await User.exists({ _id: userId });
-  if (!user) {
-    throw new ApiError(401, "Authentication required");
-  }
-
-  req.user = { id: userId };
-  next();
-});
-
-export const getRequestUserId = (req: Request) => {
-  if (!req.user) {
-    throw new ApiError(401, "Authentication required");
-  }
-
-  return req.user.id;
 };
