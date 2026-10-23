@@ -1,44 +1,26 @@
 # Stash
 
-Stash is a notes platform. You keep personal notes, pin or archive them, and attach private files.
-
-The repo has two apps:
+Stash is a notes workspace. You write pages, keep them in folders, search them, and share them with a role or a public link.
 
 | Folder | What it is | Default URL |
 | --- | --- | --- |
-| `client` | React app (Vite, TypeScript, Tailwind, React Router) | http://localhost:5173 |
-| `server` | REST API (Express, TypeScript, MongoDB, JWT, S3) | http://localhost:5000 |
-
-The client and the API are separate packages. Each has its own `package.json`. The API does not serve the frontend.
-
-API setup, environment variables, and endpoints are documented in [server/README.md](server/README.md).
+| `client` | React app (Vite, TypeScript, Tailwind) | http://localhost:5173 |
+| `server` | REST API (Express, TypeScript, MongoDB, Socket.IO) | http://localhost:5000 |
 
 ## Prerequisites
 
 - Node.js 20 or newer
-- MongoDB, for the API
-- An S3 bucket, only if you want note attachments
-
-Start Mongo locally with Docker:
-
-```bash
-docker run -d --name stash-mongo -p 27017:27017 mongo:7
-```
+- MongoDB 7 or 8 on `127.0.0.1:27017`
 
 ## Run locally
-
-Use two terminals.
-
-API:
 
 ```bash
 cd server
 cp .env.example .env
+# Set JWT_SECRET to a long random string
 npm install
 npm run dev
 ```
-
-Client:
 
 ```bash
 cd client
@@ -46,46 +28,25 @@ npm install
 npm run dev
 ```
 
-`CLIENT_URL` in the API defaults to `http://localhost:5173`, which matches the Vite dev server. CORS allows that origin.
-
-Before you share `server/.env`, replace `JWT_SECRET` with a long random value:
-
-```bash
-node -e "console.log(crypto.randomBytes(32).toString('hex'))"
-```
+The Vite dev server proxies `/api` and `/socket.io` to port 5000, so the browser stays on one origin and the refresh cookie is sent.
 
 ## Scripts
 
-From `client`:
+Server:
 
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Start the Vite dev server |
-| `npm run build` | Typecheck and build the static app |
-| `npm run preview` | Serve the production build locally |
-| `npm run lint` | Run ESLint |
+- `npm run dev` starts the API with reload
+- `npm run test` runs Vitest against `stash_test`
+- `npm run seed` creates `ada@stash.test` / `password123` with a few pages, if that account does not exist
+- `npm run typecheck` and `npm run lint`
 
-From `server`:
+Client:
 
-| Script | Purpose |
-| --- | --- |
-| `npm run dev` | Start the API with reload on file changes |
-| `npm run typecheck` | Typecheck without emitting files |
-| `npm run build` | Compile to `server/dist` |
-| `npm start` | Run the compiled API |
+- `npm run dev`, `npm run test`, `npm run lint`, `npm run build`
 
-## Layout
+## Product notes
 
-```
-client/          React app
-server/          Express API
-  src/
-    config/      environment, database, upload limits
-    models/      User and Note schemas
-    validators/  request schemas
-    services/    auth, notes, and S3
-    controllers/ HTTP handlers
-    routes/      routes mounted at /api
-    middlewares/ auth, validation, uploads, errors
-    libs/        JWT, S3, shared helpers
-```
+- Access tokens travel in the `Authorization` header. Refresh tokens are httpOnly cookies on `/api/v1/auth`.
+- In development, password-reset links are printed in the API log. Set `SMTP_HOST` to send real mail.
+- Web Push needs `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`. Reminders still land in the in-app notification list without them.
+- Uploads are stored on local disk under `server/uploads` unless S3 variables are set.
+- Pro and Team on the pricing page start a 14-day plan on the account. There is no card checkout.

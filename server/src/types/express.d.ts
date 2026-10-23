@@ -1,12 +1,12 @@
-export {};
-
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-      };
-      validated?: unknown;
+      requestId: string;
+      userId?: string;
+      userEmail?: string;
+      userName?: string;
     }
   }
 }
+
+export {};
